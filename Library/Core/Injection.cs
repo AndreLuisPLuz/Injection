@@ -1,13 +1,15 @@
+using Library.Core.Attributes;
+
 namespace Library.Core
 {
     public class Injection
     {
         private static Injection? _injection;
-        private Dictionary<Type, Func<Object>> _injectorsMap;
+        private Dictionary<Type, InjectorAttribute> _injectorsMap;
 
         private Injection()
         {
-            _injectorsMap = new Dictionary<Type, Func<Object>>();
+            _injectorsMap = new();
         }
 
         public Injection GetInstance()
