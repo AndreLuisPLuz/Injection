@@ -3,12 +3,16 @@ using Library.Core.Attributes;
 
 var injectors = Injection.GetInstance().Injectors;
 foreach (var i in injectors)
-    Console.WriteLine("a");
+    Console.WriteLine(i.Value.Name);
 
-[Injector]
-Mamao mamaoInjector() => new Mamao();
 
-public class Mamao
+namespace Client
 {
-    public string Name { get; set; } = "mamão";
-};
+    public class Mamao
+    {
+        public string Name { get; set; } = "mamão";
+
+        [Injector(Scope.SINGLETON)]
+        public Mamao MamaoInjector() => new();
+    };
+}
