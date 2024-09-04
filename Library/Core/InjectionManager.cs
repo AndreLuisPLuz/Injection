@@ -7,16 +7,24 @@ namespace Library.Core
     {
         private static InjectionManager? _injection;
 
+        public static InjectionManager GetInstance()
+        {
+            _injection ??= new();
+            return _injection;
+        }
+
         private Object? _configObj;
         private readonly Dictionary<Type, Injection> _injectorsMap;
         private readonly List<Injection> _simpleInjects;
-        private readonly Stack<Type> _solveStack;
+        private readonly Stack<InjectionNode> _solveStack;
+        private readonly InjectionTree _tree;
 
         private InjectionManager()
         {
             _injectorsMap = new Dictionary<Type, Injection>();
             _simpleInjects = new List<Injection>();
-            _solveStack = new Stack<Type>();
+            _solveStack = new Stack<InjectionNode>();
+            _tree = new InjectionTree();
 
             var types = AppDomain.CurrentDomain.GetAssemblies()
                     .SelectMany(a => a.GetTypes());
@@ -58,22 +66,47 @@ namespace Library.Core
                 _simpleInjects.Add(new Injection(i));
         }
 
-        public static InjectionManager GetInstance()
-        {
-            _injection ??= new();
-            return _injection;
-        }
-
-        public Object? DoInject(Type type)
+        public void DoInject(Type type)
         {
             // ..if its a simple inject
             var simpleInjectTypes = _simpleInjects.Select(i => i.Type);
 
             if (simpleInjectTypes.Contains(type))
-                return SolveSimpleInject(type);
+                SolveSimpleInject(type);
             
             // ..if its a normal inject
-            return SolveInject(type);
+            SolveInject(type);
+        }
+
+        private void SolveInject(Type type)
+        {
+            if(!_solveStack.Any())
+                _solveStack.Push(new InjectionNode(new Injection(type)));
+
+            while (_solveStack.Any())
+            {
+                var crrInjectionNode = _solveStack.Pop();
+                var obj = Invoke(crrInjectionNode.Injection.Type);
+
+                foreach(var n in crrInjectionNode.GetAncestors())
+                {
+                    Invoke(n.GetType());
+                }
+            }
+        }
+
+        private Object? Invoke(Type type)
+        {
+            bool isFound = _injectorsMap.TryGetValue(type, out var injection);
+            if (!isFound)
+                return null;
+
+            if(_tree.Root == null)
+                _tree.AddRoot(new InjectionNode(injection!));
+
+            AddChildren(type, _tree.Root!);
+
+            return injection!.InjectorInfo!.Invoke(_configObj, Array.Empty<Type>());
         }
 
         private Object? SolveSimpleInject(Type type)
@@ -81,42 +114,27 @@ namespace Library.Core
             throw new NotImplementedException();
         }
 
-        private Object? SolveInject(Type type)
-        {
-            bool isFound = _injectorsMap.TryGetValue(type, out var injection);
-            if (!isFound)
-                return null;
-
-            InjectionTree tree = new(injection!);
-            addChildren(type, tree.Root, tree);
-
-            while (_solveStack.Any())
-            {
-                var crrType = _solveStack.Pop();
-                SolveInject(crrType);
-            }
-            
-            return injection!.InjectorInfo!.Invoke(_configObj, Array.Empty<Type>());
-
-        }
-
-        void addChildren(Type type, InjectionNode parent, InjectionTree tree)
+        private void AddChildren(Type type, InjectionNode parent)
         {
             var children = getChildren(type);
             foreach (var c in children)
             {
-                addOnTree(c, parent, tree);
+                AddOnTree(c, parent);
             }
         }
 
-        void addOnTree(Type type, InjectionNode parent, InjectionTree tree)
+        private void AddOnTree(Type type, InjectionNode parent)
         {
             var injection = new Injection(type);
-            tree.NewLeaf(injection, parent);
-            addChildren(type, parent, tree);
+            _tree.NewLeaf(injection, parent);
+
+            if(!_solveStack.Contains(parent))
+                _solveStack.Push(parent);
+
+            AddChildren(type, parent);
         }
 
-        IEnumerable<Type> getChildren(Type type)
+        private IEnumerable<Type> getChildren(Type type)
         {
             var fieldTypes = type.GetFields()
                     .Select(f => f.GetType());

@@ -45,12 +45,12 @@ namespace Library.Core
 
     class InjectionTree
     {
-        public InjectionNode Root { get; private set; }
+        public InjectionNode Root { get; private set; } = null!;
         public HashSet<InjectionNode> Leaves { get; private set; } = new();
 
-        public InjectionTree(Injection firstInjection)
+        public void AddRoot(InjectionNode root)
         {
-            Root = new InjectionNode(firstInjection);
+            Root = root;
             Leaves.Add(Root);
         }
 
@@ -67,13 +67,9 @@ namespace Library.Core
             return newNode;
         }
 
-        public Stack<InjectionNode> GetBranchToRoot(Injection leaf)
-        {
-            var node = Leaves.Where(l => l.Injection.Type == leaf.Type)
-                    .FirstOrDefault()
-                ?? throw new InvalidOperationException("Node given is not a leaf.");
-            
-            return node.GetAncestors();
+        public Stack<InjectionNode> GetBranchToRoot(InjectionNode leaf)
+        {   
+            return leaf.GetAncestors();
         }
     }
 }

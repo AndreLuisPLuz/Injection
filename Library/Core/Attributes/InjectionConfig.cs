@@ -1,7 +1,8 @@
 namespace Library.Core.Attributes
 {
+    // ..config class attribute
     [System.AttributeUsage(AttributeTargets.Class, Inherited = false)]
-    sealed class InjectionConfigAttribute : System.Attribute
+    public sealed class InjectionConfigAttribute : System.Attribute
     {
 
     }

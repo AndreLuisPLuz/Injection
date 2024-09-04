@@ -1,7 +1,8 @@
 namespace Library.Core.Attributes
 {
+    // ..simple inject attribute (dont need a config class)
     [System.AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = false)]
-    sealed class InjectAttribute : System.Attribute
+    public sealed class InjectAttribute : System.Attribute
     {
         
     }
